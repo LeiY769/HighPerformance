@@ -76,7 +76,15 @@ int main(int argc, char **argv)
   }
 
   double start = GET_TIME();
+  //initialize 
+  double A = 5;
+  double f = 1. / 20.;
+  double c1 = param.dt * param.g;
+  double c2 = param.dt * param.gamma;
+  double alpha = 2* M_PI *f;
 
+
+  // time loop
   for(int n = 0; n < nt; n++) {
 
     if(n && (n % (nt / 10)) == 0) {
@@ -95,24 +103,21 @@ int main(int argc, char **argv)
 
     // impose boundary conditions
     double t = n * param.dt;
+    double sin_t = sin(alpha * t);
     if(param.source_type == 1) {
       // sinusoidal velocity on top boundary
-      double A = 5;
-      double f = 1. / 20.;
       for(int i = 0; i < nx; i++) {
         for(int j = 0; j < ny; j++) {
           SET(&u, 0, j, 0.);
           SET(&u, nx, j, 0.);
           SET(&v, i, 0, 0.);
-          SET(&v, i, ny, A * sin(2 * M_PI * f * t));
+          SET(&v, i, ny, A * sin_t);
         }
       }
     }
     else if(param.source_type == 2) {
       // sinusoidal elevation in the middle of the domain
-      double A = 5;
-      double f = 1. / 20.;
-      SET(&eta, nx / 2, ny / 2, A * sin(2 * M_PI * f * t));
+      SET(&eta, nx / 2, ny / 2, A * sin_t);
     }
     else {
       // TODO: add other sources
@@ -125,10 +130,10 @@ int main(int argc, char **argv)
       for(int j = 0; j < ny ; j++) {
         // TODO: this does not evaluate h at the correct locations
         double h_ij = GET(&h_interp, i, j);
-        double c1 = param.dt * h_ij;
+        double c1_eta = param.dt * h_ij;
         double eta_ij = GET(&eta, i, j)
-          - c1 / param.dx * (GET(&u, i + 1, j) - GET(&u, i, j))
-          - c1 / param.dy * (GET(&v, i, j + 1) - GET(&v, i, j));
+          - c1_eta / param.dx * (GET(&u, i + 1, j) - GET(&u, i, j))
+          - c1_eta / param.dy * (GET(&v, i, j + 1) - GET(&v, i, j));
         SET(&eta, i, j, eta_ij);
       }
     }
@@ -136,8 +141,6 @@ int main(int argc, char **argv)
     // update u and v
     for(int i = 0; i < nx; i++) {
       for(int j = 0; j < ny; j++) {
-        double c1 = param.dt * param.g;
-        double c2 = param.dt * param.gamma;
         double eta_ij = GET(&eta, i, j);
         double eta_imj = GET(&eta, (i == 0) ? 0 : i - 1, j);
         double eta_ijm = GET(&eta, i, (j == 0) ? 0 : j - 1);
