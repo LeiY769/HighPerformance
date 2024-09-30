@@ -19,15 +19,26 @@
 
 double interpolate_data(const data *data, double x, double y)
 {
-  // TODO: this returns the nearest neighbor, should implement actual
-  // interpolation instead
-  int i = (int)(x / data->dx);
-  int j = (int)(y / data->dy);
+  double dx = data->dx;
+  double dy = data->dy;
+  int i = (int)(x / dx);
+  int j = (int)(y / dy);
+
+  double tx = (x - i * dx) / dx;
+  double ty = (y - j * dy) / dy;
   if(i < 0) i = 0;
-  else if(i > data->nx - 1) i = data->nx - 1;
+  else if(i > data->nx - 2) i = data->nx - 2; // Be sure to not go out of bounds
   if(j < 0) j = 0;
-  else if(j > data->ny - 1) j = data->ny - 1;
-  double val = GET(data, i, j);
+  else if(j > data->ny - 2) j = data->ny - 2; // Be sure to not go out of bounds
+
+  // Get the corner
+  double coord_ij = GET(data, i, j);
+  double coord_i1j = GET(data, i + 1, j);
+  double coord_ij1 = GET(data, i, j + 1);
+  double coord_i1j1 = GET(data, i + 1, j + 1);
+
+  //Interpolation
+  double val = (1 - tx) * (1 - ty) * coord_ij + tx * (1 - ty) * coord_i1j + (1 - tx) * ty * coord_ij1 + tx * ty * coord_i1j1;
   return val;
 }
 
@@ -106,8 +117,8 @@ int main(int argc, char **argv)
     double sin_t = sin(alpha * t);
     if(param.source_type == 1) {
       // sinusoidal velocity on top boundary
-      for(int i = 0; i < nx; i++) {
-        for(int j = 0; j < ny; j++) {
+      for(int j = 0; j < ny; j++) {
+        for(int i = 0; i < nx; i++) {
           SET(&u, 0, j, 0.);
           SET(&u, nx, j, 0.);
           SET(&v, i, 0, 0.);
@@ -126,8 +137,8 @@ int main(int argc, char **argv)
     }
 
     // update eta
-    for(int i = 0; i < nx; i++) {
-      for(int j = 0; j < ny ; j++) {
+    for(int j = 0; j < ny ; j++) {
+      for(int i = 0; i < nx; i++) {
         // TODO: this does not evaluate h at the correct locations
         double h_ij = GET(&h_interp, i, j);
         double c1_eta = param.dt * h_ij;
@@ -139,8 +150,8 @@ int main(int argc, char **argv)
     }
 
     // update u and v
-    for(int i = 0; i < nx; i++) {
-      for(int j = 0; j < ny; j++) {
+    for(int j = 0; j < ny; j++) {
+      for(int i = 0; i < nx; i++) {
         double eta_ij = GET(&eta, i, j);
         double eta_imj = GET(&eta, (i == 0) ? 0 : i - 1, j);
         double eta_ijm = GET(&eta, i, (j == 0) ? 0 : j - 1);
