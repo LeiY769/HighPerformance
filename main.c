@@ -145,8 +145,8 @@ int main(int argc, char **argv)
         double h_ij = GET(&h_interp, i, j);
         double c1_eta = param.dt * h_ij;
         double eta_ij = GET(&eta, i, j)
-          - c1_eta / param.dx * (GET(&u, i + 1, j) - GET(&u, i, j))
-          - c1_eta / param.dy * (GET(&v, i, j + 1) - GET(&v, i, j));
+          - c1_eta * invdx * (GET(&u, i + 1, j) - GET(&u, i, j))
+          - c1_eta * invdy * (GET(&v, i, j + 1) - GET(&v, i, j));
         SET(&eta, i, j, eta_ij);
       }
     }
