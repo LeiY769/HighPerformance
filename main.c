@@ -17,21 +17,19 @@
 #define GET(data, i, j) ((data)->values[(data)->nx * (j) + (i)])
 #define SET(data, i, j, val) ((data)->values[(data)->nx * (j) + (i)] = (val))
 
-double interpolate_data(const data *data, double x, double y)
+double interpolate_data(const data *data, double x, double y,double invdx,double invdy)
 {
-  double dx = data->dx;
-  double dy = data->dy;
-  int i = (int)(x / dx);
-  int j = (int)(y / dy);
+  int i = (int)(x * invdx);
+  int j = (int)(y * invdy);
 
-  double tx = (x - i * dx) / dx;
-  double ty = (y - j * dy) / dy;
+  double tx = (x - i / invdx) * invdx;
+  double ty = (y - j / invdy) * invdy;
   if(i < 0) i = 0;
   else if(i > data->nx - 2) i = data->nx - 2; // Be sure to not go out of bounds
   if(j < 0) j = 0;
   else if(j > data->ny - 2) j = data->ny - 2; // Be sure to not go out of bounds
 
-  // Get the corner
+  // Get the corners
   double coord_ij = GET(data, i, j);
   double coord_i1j = GET(data, i + 1, j);
   double coord_ij1 = GET(data, i, j + 1);
@@ -55,12 +53,22 @@ int main(int argc, char **argv)
 
   data h;
   if(read_data(&h, param.input_h_filename)) return 1;
+  // Variable declaration
+  double A = 5;
+  double f = 1. / 20.;
+  double c1 = param.dt * param.g;
+  double c2 = param.dt * param.gamma;
+  double alpha = 2* M_PI *f;
+  double invdx = 1./param.dx;
+  double invdy = 1./param.dy;
+  double c1_dx = c1 / param.dx;
+  double c1_dy = c1 / param.dy;
 
   // infer size of domain from input elevation data
   double hx = h.nx * h.dx;
   double hy = h.ny * h.dy;
-  int nx = floor(hx / param.dx);
-  int ny = floor(hy / param.dy);
+  int nx = floor(hx * invdx);
+  int ny = floor(hy * invdy);
   if(nx <= 0) nx = 1;
   if(ny <= 0) ny = 1;
   int nt = floor(param.max_t / param.dt);
@@ -70,7 +78,7 @@ int main(int argc, char **argv)
   printf(" - number of time steps: %d\n", nt);
 
   data eta, u, v;
-  init_data(&eta, nx, ny, param.dx, param.dx, 0.);
+  init_data(&eta, nx, ny, param.dx, param.dy, 0.);
   init_data(&u, nx + 1, ny, param.dx, param.dy, 0.);
   init_data(&v, nx, ny + 1, param.dx, param.dy, 0.);
 
@@ -81,18 +89,12 @@ int main(int argc, char **argv)
     for(int i = 0; i < nx; i++) {
       double x = i * param.dx;
       double y = j * param.dy;
-      double val = interpolate_data(&h, x, y);
+      double val = interpolate_data(&h, x, y,invdx,invdy);
       SET(&h_interp, i, j, val);
     }
   }
 
   double start = GET_TIME();
-  //initialize 
-  double A = 5;
-  double f = 1. / 20.;
-  double c1 = param.dt * param.g;
-  double c2 = param.dt * param.gamma;
-  double alpha = 2* M_PI *f;
 
 
   // time loop
@@ -156,14 +158,13 @@ int main(int argc, char **argv)
         double eta_imj = GET(&eta, (i == 0) ? 0 : i - 1, j);
         double eta_ijm = GET(&eta, i, (j == 0) ? 0 : j - 1);
         double u_ij = (1. - c2) * GET(&u, i, j)
-          - c1 / param.dx * (eta_ij - eta_imj);
+          - (c1_dx) * (eta_ij - eta_imj);
         double v_ij = (1. - c2) * GET(&v, i, j)
-          - c1 / param.dy * (eta_ij - eta_ijm);
+          - (c1_dy) * (eta_ij - eta_ijm);
         SET(&u, i, j, u_ij);
         SET(&v, i, j, v_ij);
       }
     }
-
   }
 
   write_manifest_vtk(param.output_eta_filename,
