@@ -17,13 +17,14 @@
 #define GET(data, i, j) ((data)->values[(data)->nx * (j) + (i)])
 #define SET(data, i, j, val) ((data)->values[(data)->nx * (j) + (i)] = (val))
 
-double interpolate_data(const data *data, double x, double y,double invdx,double invdy)
+
+double interpolate_data(const data *data, double x, double y,double invdx,double invdy, double dx, double dy)
 {
   int i = (int)(x * invdx);
   int j = (int)(y * invdy);
 
-  double tx = (x - i / invdx) * invdx;
-  double ty = (y - j / invdy) * invdy;
+  double tx = (x - i * dx) * invdx;
+  double ty = (y - j * dy) * invdy;
   if(i < 0) i = 0;
   else if(i > data->nx - 2) i = data->nx - 2; // Be sure to not go out of bounds
   if(j < 0) j = 0;
@@ -89,7 +90,7 @@ int main(int argc, char **argv)
     for(int i = 0; i < nx; i++) {
       double x = i * param.dx;
       double y = j * param.dy;
-      double val = interpolate_data(&h, x, y,invdx,invdy);
+      double val = interpolate_data(&h, x, y,invdx,invdy,param.dx,param.dy);
       SET(&h_interp, i, j, val);
     }
   }
@@ -142,6 +143,8 @@ int main(int argc, char **argv)
     for(int j = 0; j < ny ; j++) {
       for(int i = 0; i < nx; i++) {
         // TODO: this does not evaluate h at the correct locations
+        double current_eta = GET(&eta, i, j);
+        
         double h_ij = GET(&h_interp, i, j);
         double c1_eta = param.dt * h_ij;
         double eta_ij = GET(&eta, i, j)
