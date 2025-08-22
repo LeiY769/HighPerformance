@@ -821,9 +821,10 @@ int main(int argc, char **argv)
             }
         }
 
-        }
+        
         MPI_Barrier(MPI_COMM_WORLD); // Synchronize all ranks after each time step
     }
+    
 
     write_manifest_vtk(param.output_eta_filename,param.dt, nt, param.sampling_rate,world_size);
     //write_manifest_vtk("x velocity", param.output_u_filename,
